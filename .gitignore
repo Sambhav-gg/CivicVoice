@@ -1,0 +1,8 @@
+node_modules
+npm-debug.log
+.env
+
+
+civicvoice-client/node_modules/
+civicvoice-client/dist/
+civicvoice-client/.env
