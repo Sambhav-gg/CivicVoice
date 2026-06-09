@@ -43,7 +43,7 @@ app.use('/api/auth', authLimiter)
 app.get('/health', (req, res) => res.json({ status: 'ok' }))
 app.use('/api/issues', issuesRouter)
 app.use('/api/auth', authRouter)
-app.get('/debug-ip', (req, res) => {
+app.get('/api/debug-ip', (req, res) => {
     res.json({
         ip: req.ip,
         ips: req.ips,
