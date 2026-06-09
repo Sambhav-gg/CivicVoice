@@ -13,7 +13,7 @@ const issuesRouter = require('./routes/issues')
 const authRouter = require('./routes/auth')
 
 const app = express()
-app.set('trust proxy', 1);
+app.set('trust proxy', 2);
 
 app.use(helmet())
 app.use(cors())
