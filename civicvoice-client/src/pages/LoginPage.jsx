@@ -175,6 +175,14 @@ export default function LoginPage() {
                         </div>
                     </div>
 
+                    {mode === 'login' && (
+                        <div className="flex justify-end">
+                            <Link to="/forgot-password" className="text-xs text-stone-400 hover:text-blue-600 transition-colors font-medium">
+                                Forgot password?
+                            </Link>
+                        </div>
+                    )}
+
                     {/* Success message */}
                     {success && (
                         <div className="mt-4 flex items-start gap-2.5 bg-green-50 border border-green-200 rounded-xl px-4 py-3">

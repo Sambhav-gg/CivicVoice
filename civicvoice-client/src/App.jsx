@@ -8,6 +8,8 @@ import LoginPage from './pages/LoginPage'
 import AdminPage from './pages/AdminPage'
 import LandingPage from './pages/LandingPage'
 import VerifySuccessPage from './pages/VerifySuccessPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import 'leaflet/dist/leaflet.css'
 
 export default function App() {
@@ -20,6 +22,8 @@ export default function App() {
           <Route path="/map" element={<MapPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/verify-success" element={<VerifySuccessPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/report" element={
             <ProtectedRoute><ReportPage /></ProtectedRoute>
           } />

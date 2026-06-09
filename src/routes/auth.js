@@ -2,6 +2,7 @@ const express = require('express')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
+const redis = require('../db/redis')
 const db = require('../db')
 // const { sendVerificationEmail } = require('../utils/email')
 const { notificationQueue } = require('../queues/notificationWorker')
@@ -169,6 +170,69 @@ router.get('/me', async (req, res, next) => {
         )
         if (!result.rows.length) return res.status(404).json({ success: false, message: 'User not found' })
         res.json({ success: true, user: result.rows[0] })
+    } catch (err) {
+        next(err)
+    }
+})
+
+router.post('/forgot-password', async (req, res, next) => {
+    try {
+        const { email } = req.body
+        if (!email) return res.status(400).json({ success: false, message: 'Email required' })
+
+        const result = await db.query(
+            'SELECT id, name, email FROM users WHERE email = $1',
+            [email]
+        )
+
+        console.log('EMAIL:', email)
+        console.log('FOUND USERS:', result.rows.length)
+
+        // Always 200 — don't reveal if email exists
+        if (!result.rows.length) {
+            return res.status(200).json({ success: true, message: 'If that email exists, a reset link has been sent.' })
+        }
+
+        const user = result.rows[0]
+        const token = crypto.randomBytes(32).toString('hex')  // crypto already imported
+
+        await redis.set(`pwd_reset:${token}`, { userId: user.id, email: user.email }, 600)
+        console.log('BEFORE QUEUE')
+        await notificationQueue.add('notify', {
+            type: 'SEND_PASSWORD_RESET_EMAIL',
+            data: { email: user.email, name: user.name, token }
+        })
+        console.log('AFTER QUEUE')
+
+        res.status(200).json({ success: true, message: 'If that email exists, a reset link has been sent.' })
+    } catch (err) {
+        next(err)
+    }
+})
+
+// POST /api/auth/reset-password
+router.post('/reset-password', async (req, res, next) => {
+    try {
+        const { token, newPassword } = req.body
+        if (!token || !newPassword) {
+            return res.status(400).json({ success: false, message: 'Token and new password are required' })
+        }
+
+        if (newPassword.length < 8) {
+            return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' })
+        }
+
+        const data = await redis.get(`pwd_reset:${token}`)
+        if (!data) {
+            return res.status(400).json({ success: false, message: 'Reset link is invalid or has expired' })
+        }
+
+        const hash = await bcrypt.hash(newPassword, 10)  // bcrypt already imported
+
+        await db.query('UPDATE users SET password = $1 WHERE id = $2', [hash, data.userId])
+        await redis.del(`pwd_reset:${token}`)
+
+        res.json({ success: true, message: 'Password updated successfully' })
     } catch (err) {
         next(err)
     }

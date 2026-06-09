@@ -1,5 +1,6 @@
 const { Queue, Worker } = require('bullmq')
-const { sendVerificationEmail } = require('../utils/email')
+// const { sendVerificationEmail } = require('../utils/email')
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/email')
 const connection = {
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379'),
@@ -18,6 +19,12 @@ const worker = new Worker('notifications', async (job) => {
             console.log(`[NOTIFY] Sending verification email to ${data.email}`)
             await sendVerificationEmail(data.email, data.name, data.token)
             console.log(`[NOTIFY] Verification email sent to ${data.email}`)
+            break
+
+        case 'SEND_PASSWORD_RESET_EMAIL':
+            console.log(`[NOTIFY] Sending password reset email to ${data.email}`)
+            await sendPasswordResetEmail(data.email, data.name, data.token)
+            console.log(`[NOTIFY] Password reset email sent to ${data.email}`)
             break
 
         case 'NEW_ISSUE':
