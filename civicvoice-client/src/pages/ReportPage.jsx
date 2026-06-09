@@ -1,9 +1,9 @@
-import { useState } from 'react'
+// import { useState } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { reportIssue } from '../api/issues'
 import { useNavigate, Link } from 'react-router-dom'
-
+import { useState, useEffect } from 'react'
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -18,26 +18,91 @@ const CATEGORIES = [
     { value: 'sanitation', label: 'Sanitation', icon: '🗑️', color: 'border-green-300 bg-green-50 text-green-700 ring-green-400' },
     { value: 'other', label: 'Other', icon: '📌', color: 'border-stone-300 bg-stone-50 text-stone-600 ring-stone-400' },
 ]
-
+// const [userLocation, setUserLocation] = useState(null)
 function PinOnClick({ onPin }) {
     useMapEvents({ click(e) { onPin(e.latlng) } })
     return null
 }
-
+// useEffect(() => {
+//     navigator.geolocation.getCurrentPosition(
+//         (position) => {
+//             setUserLocation({
+//                 lat: position.coords.latitude,
+//                 lng: position.coords.longitude
+//             })
+//         },
+//         (err) => {
+//             console.log(err)
+//         }
+//     )
+// }, [])
 const pinIcon = L.divIcon({
     className: '',
-    html: `<div style="width:18px;height:18px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(37,99,235,0.5)"></div>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+    html: `
+        <div style="
+            position:relative;
+            width:24px;
+            height:24px;
+        ">
+            <div style="
+                width:24px;
+                height:24px;
+                background:#ef4444;
+                border:3px solid white;
+                border-radius:50% 50% 50% 0;
+                transform:rotate(-45deg);
+                box-shadow:0 2px 8px rgba(0,0,0,0.3);
+            "></div>
+
+            <div style="
+                position:absolute;
+                top:6px;
+                left:6px;
+                width:8px;
+                height:8px;
+                background:white;
+                border-radius:50%;
+            "></div>
+        </div>
+    `,
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+})
+const userIcon = L.divIcon({
+    className: '',
+    html: `<div style="width:16px;height:16px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(37,99,235,0.25)"></div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
 })
 
+function CurrentLocation({ onLocationFound }) {
+    const map = useMapEvents({
+        locationfound(e) {
+            map.flyTo(e.latlng, 15)
+            onLocationFound(e.latlng)
+        },
+    })
+
+    useEffect(() => {
+        map.locate()
+    }, [])
+
+    return null
+}
+
+
 export default function ReportPage() {
+    const [userLocation, setUserLocation] = useState(null)
+    const handleLocationFound = (latlng) => {
+        setUserLocation(latlng)
+    }
     const [form, setForm] = useState({ title: '', description: '', category: 'road', address: '' })
     const [pin, setPin] = useState(null)
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
     const [step, setStep] = useState(1) // 1 = details, 2 = confirm
     const navigate = useNavigate()
+
 
     const handleSubmit = async () => {
         setError('')
@@ -100,8 +165,8 @@ export default function ReportPage() {
                                 <button key={cat.value}
                                     onClick={() => setForm({ ...form, category: cat.value })}
                                     className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all duration-150 text-left ${form.category === cat.value
-                                            ? `${cat.color} ring-2 ring-offset-1 border-transparent`
-                                            : 'border-stone-200 bg-white text-stone-500 hover:border-stone-300'
+                                        ? `${cat.color} ring-2 ring-offset-1 border-transparent`
+                                        : 'border-stone-200 bg-white text-stone-500 hover:border-stone-300'
                                         }`}>
                                     <span className="text-base flex-shrink-0">{cat.icon}</span>
                                     <span className="leading-tight">{cat.label}</span>
@@ -138,8 +203,8 @@ export default function ReportPage() {
 
                     {/* Pin status */}
                     <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${pin
-                            ? 'bg-green-50 border-green-200 text-green-700'
-                            : 'bg-amber-50 border-amber-200 text-amber-700'
+                        ? 'bg-green-50 border-green-200 text-green-700'
+                        : 'bg-amber-50 border-amber-200 text-amber-700'
                         }`}>
                         <span className="text-base">{pin ? '📍' : '👆'}</span>
                         <span className="text-xs leading-relaxed">
@@ -195,13 +260,37 @@ export default function ReportPage() {
                     </div>
                 )}
 
-                <MapContainer center={[24.2297, 83.0493]} zoom={14} style={{ height: '100%', width: '100%' }}>
+                <MapContainer
+                    center={[28.6139, 77.2090]}
+                    zoom={14}
+                    style={{ height: '100%', width: '100%' }}
+                >
                     <TileLayer
                         attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
+
+                    {/* Auto detect user location + fly to it */}
+                    <CurrentLocation onLocationFound={handleLocationFound} />
+
+                    {/* Click anywhere to place issue pin */}
                     <PinOnClick onPin={setPin} />
-                    {pin && <Marker position={pin} icon={pinIcon} />}
+
+                    {/* User current location */}
+                    {userLocation && (
+                        <Marker
+                            position={userLocation}
+                            icon={userIcon}
+                        />
+                    )}
+
+                    {/* Issue location */}
+                    {pin && (
+                        <Marker
+                            position={pin}
+                            icon={pinIcon}
+                        />
+                    )}
                 </MapContainer>
             </div>
         </div>

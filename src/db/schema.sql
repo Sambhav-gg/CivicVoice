@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
   email       VARCHAR(150) UNIQUE NOT NULL,
   password    VARCHAR(255) NOT NULL,
   role        VARCHAR(20) DEFAULT 'citizen' CHECK (role IN ('citizen', 'admin')),
+  verified    BOOLEAN DEFAULT FALSE,
+  verified_at TIMESTAMP,
   created_at  TIMESTAMP DEFAULT NOW()
 );
 

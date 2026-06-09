@@ -1,31 +1,55 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { login as loginApi, register as registerApi } from '../api/auth'
+import { login as loginApi, register as registerApi, resendVerification } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
     const [mode, setMode] = useState('login')
     const [form, setForm] = useState({ name: '', email: '', password: '' })
-    const [error, setError] = useState('')
+    const [error, setError] = useState(null)   // { text, unverified }
+    const [success, setSuccess] = useState('')
     const [loading, setLoading] = useState(false)
     const [showPass, setShowPass] = useState(false)
     const { login } = useAuth()
     const navigate = useNavigate()
 
     const handleSubmit = async () => {
-        setError('')
+        setError(null)
+        setSuccess('')
         setLoading(true)
         try {
-            const res = mode === 'login'
-                ? await loginApi({ email: form.email, password: form.password })
-                : await registerApi({ name: form.name, email: form.email, password: form.password })
-            login(res.data.token, res.data.user)
-            navigate('/')
+            if (mode === 'login') {
+                const res = await loginApi({ email: form.email, password: form.password })
+                login(res.data.token, res.data.user)
+                navigate('/')
+            } else {
+                await registerApi({ name: form.name, email: form.email, password: form.password })
+                setSuccess('Account created! Check your email to verify before signing in.')
+                setMode('login')
+            }
         } catch (err) {
-            setError(err.response?.data?.message || 'Something went wrong')
+            const msg = err.response?.data?.message || 'Something went wrong'
+            const unverified = err.response?.data?.unverified || false
+            setError({ text: msg, unverified })
         } finally {
             setLoading(false)
         }
+    }
+
+    const handleResend = async () => {
+        setError(null)
+        try {
+            await resendVerification({ email: form.email })
+            setSuccess('Verification email resent — check your inbox')
+        } catch {
+            setError({ text: 'Failed to resend — try again' })
+        }
+    }
+
+    const switchMode = (m) => {
+        setMode(m)
+        setError(null)
+        setSuccess('')
     }
 
     return (
@@ -33,7 +57,6 @@ export default function LoginPage() {
 
             {/* ── Left decorative panel ─────────────────────────────── */}
             <div className="hidden lg:flex w-1/2 bg-stone-900 flex-col justify-between p-14 relative overflow-hidden">
-                {/* grid texture */}
                 <div className="absolute inset-0 opacity-10"
                     style={{
                         backgroundImage: 'linear-gradient(rgba(255,255,255,0.15) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.15) 1px,transparent 1px)',
@@ -41,13 +64,11 @@ export default function LoginPage() {
                     }}
                 />
 
-                {/* Logo */}
                 <Link to="/" className="relative z-10 flex items-center gap-2 text-white text-sm font-black">
                     <span className="w-2 h-2 rounded-full bg-blue-500" />
                     CivicVoice
                 </Link>
 
-                {/* Center content */}
                 <div className="relative z-10">
                     <div className="flex flex-wrap gap-2 mb-10">
                         {['Roads & Potholes', 'Street Lighting', 'Waterlogging', 'Garbage', 'Public Safety', 'Tree Hazards', 'Encroachment', 'Water Supply'].map((cat, i) => (
@@ -67,7 +88,6 @@ export default function LoginPage() {
                     </p>
                 </div>
 
-                {/* Bottom stats */}
                 <div className="relative z-10 grid grid-cols-3 gap-3">
                     {[{ n: 'PostGIS', l: 'Geo queries' }, { n: 'Redis', l: '30s cache' }, { n: 'BullMQ', l: 'Async jobs' }].map(s => (
                         <div key={s.n} className="border border-white/10 rounded-xl px-4 py-3 bg-white/5">
@@ -81,7 +101,6 @@ export default function LoginPage() {
             {/* ── Right form panel ──────────────────────────────────── */}
             <div className="w-full lg:w-1/2 flex flex-col items-center justify-center px-6 py-16">
 
-                {/* Mobile logo */}
                 <Link to="/" className="lg:hidden flex items-center gap-2 text-stone-900 text-sm font-black mb-10">
                     <span className="w-2 h-2 rounded-full bg-blue-600" />
                     CivicVoice
@@ -89,7 +108,6 @@ export default function LoginPage() {
 
                 <div className="w-full max-w-sm">
 
-                    {/* Header */}
                     <div className="mb-8">
                         <h1 className="text-3xl font-black text-stone-900 tracking-tight mb-1">
                             {mode === 'login' ? 'Welcome back' : 'Create account'}
@@ -101,18 +119,16 @@ export default function LoginPage() {
                         </p>
                     </div>
 
-                    {/* Mode toggle */}
                     <div className="flex bg-stone-100 rounded-xl p-1 mb-8">
                         {['login', 'register'].map(m => (
                             <button key={m}
-                                onClick={() => { setMode(m); setError('') }}
+                                onClick={() => switchMode(m)}
                                 className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${mode === m ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}>
                                 {m === 'login' ? 'Sign in' : 'Register'}
                             </button>
                         ))}
                     </div>
 
-                    {/* Fields */}
                     <div className="space-y-4">
                         {mode === 'register' && (
                             <div>
@@ -159,15 +175,31 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    {/* Error */}
-                    {error && (
-                        <div className="mt-4 flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                            <span className="text-red-500 text-sm mt-0.5">⚠</span>
-                            <p className="text-sm text-red-600">{error}</p>
+                    {/* Success message */}
+                    {success && (
+                        <div className="mt-4 flex items-start gap-2.5 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                            <span className="text-green-500 text-sm mt-0.5">✓</span>
+                            <p className="text-sm text-green-700">{success}</p>
                         </div>
                     )}
 
-                    {/* Submit */}
+                    {/* Error message */}
+                    {error && (
+                        <div className="mt-4 flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                            <span className="text-red-500 text-sm mt-0.5">⚠</span>
+                            <div className="text-sm text-red-600">
+                                <p>{error.text}</p>
+                                {error.unverified && (
+                                    <button
+                                        onClick={handleResend}
+                                        className="mt-1 underline font-semibold hover:text-red-800 transition-colors">
+                                        Resend verification email
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     <button
                         onClick={handleSubmit}
                         disabled={loading}
@@ -181,17 +213,15 @@ export default function LoginPage() {
                         }
                     </button>
 
-                    {/* Switch mode */}
                     <p className="text-center text-sm text-stone-400 mt-6">
                         {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
                         <button
-                            onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError('') }}
+                            onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
                             className="text-stone-900 font-bold hover:text-blue-600 transition-colors">
                             {mode === 'login' ? 'Register' : 'Sign in'}
                         </button>
                     </p>
 
-                    {/* Back link */}
                     <div className="mt-8 pt-6 border-t border-stone-100 text-center">
                         <Link to="/" className="text-xs text-stone-300 hover:text-stone-500 transition-colors inline-flex items-center gap-1">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>

@@ -7,6 +7,7 @@ import ReportPage from './pages/ReportPage'
 import LoginPage from './pages/LoginPage'
 import AdminPage from './pages/AdminPage'
 import LandingPage from './pages/LandingPage'
+import VerifySuccessPage from './pages/VerifySuccessPage'
 import 'leaflet/dist/leaflet.css'
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/verify-success" element={<VerifySuccessPage />} />
           <Route path="/report" element={
             <ProtectedRoute><ReportPage /></ProtectedRoute>
           } />
