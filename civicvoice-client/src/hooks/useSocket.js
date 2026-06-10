@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { io } from 'socket.io-client'
 
 const SOCKET_URL =
-    import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'
+    import.meta.env.VITE_SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:5000` || 'http://localhost:5000'
 
 let socket = null
 
