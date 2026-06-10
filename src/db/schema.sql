@@ -26,6 +26,13 @@ CREATE TABLE IF NOT EXISTS issues (
   updated_at   TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS issue_upvotes (
+  user_id   INT REFERENCES users(id) ON DELETE CASCADE,
+  issue_id  INT REFERENCES issues(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (user_id, issue_id)
+);
+
 CREATE INDEX IF NOT EXISTS issues_location_idx ON issues USING GIST(location);
 CREATE INDEX IF NOT EXISTS issues_status_idx   ON issues(status);
 CREATE INDEX IF NOT EXISTS issues_category_idx ON issues(category);

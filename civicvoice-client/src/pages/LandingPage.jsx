@@ -1,292 +1,327 @@
 import { Link } from 'react-router-dom'
 
-const features = [
-    { icon: '📍', title: 'Map-based reporting', desc: 'Drop a pin on the exact location. Leaflet map with category-colored markers and nearby issue detection via PostGIS.' },
-    { icon: '🔐', title: 'Role-based access', desc: 'Citizens report and upvote. Admins manage status. JWT auth with bcrypt-hashed credentials and protected routes.' },
-    { icon: '⚡', title: 'Redis caching', desc: 'Nearby queries cached with a 30s TTL. Cache auto-invalidated on new reports to keep data fresh.' },
-    { icon: '🌍', title: 'Geospatial search', desc: 'PostGIS ST_DWithin finds issues within your radius with precise distance in metres.' },
-    { icon: '🔔', title: 'Async notifications', desc: 'BullMQ queues handle NEW_ISSUE, STATUS_UPDATE, and UPVOTE_MILESTONE without blocking threads.' },
-    { icon: '📊', title: 'Admin dashboard', desc: 'Live issue list with inline status updates, cursor-based pagination, and rate-limited endpoints.' },
+const problems = [
+    { icon: '🕳️', label: 'Pothole swallowed your tyre', sub: 'Roads & Potholes' },
+    { icon: '💡', label: 'Streetlight out for weeks', sub: 'Street Lighting' },
+    { icon: '🌊', label: 'Street floods every monsoon', sub: 'Waterlogging' },
+    { icon: '🗑️', label: 'Garbage piling up since days', sub: 'Garbage & Waste' },
+    { icon: '🚰', label: 'No water supply since morning', sub: 'Water Supply' },
+    { icon: '🚧', label: 'Footpath blocked by encroachment', sub: 'Encroachment' },
 ]
 
 const steps = [
-    { num: '01', title: 'Spot an issue', desc: 'Citizen notices broken infra — streetlight, pothole, waterlogging.' },
-    { num: '02', title: 'Pin & report', desc: 'Drop a pin, choose category, describe it, submit in 30 seconds.' },
-    { num: '03', title: 'Community upvotes', desc: 'Others in the area upvote. Milestone alerts fire via BullMQ.' },
-    { num: '04', title: 'Admin resolves', desc: 'Admin updates status. Citizen gets notified. Issue closed.' },
+    {
+        num: '1',
+        icon: '📍',
+        title: 'Pin it on the map',
+        desc: 'Open the map, drop a pin on the exact spot. No address guessing — just tap where the problem is.',
+        detail: 'Works on phone or desktop',
+    },
+    {
+        num: '2',
+        icon: '📝',
+        title: 'Describe the issue',
+        desc: 'Pick a category, write a short description. Takes under a minute. Attach a photo if you have one.',
+        detail: 'Under 60 seconds to report',
+    },
+    {
+        num: '3',
+        icon: '👥',
+        title: 'Neighbours upvote',
+        desc: 'Others in your area see the issue on the map. When they upvote, it rises in priority for the admin team.',
+        detail: 'More votes = faster action',
+    },
+    {
+        num: '4',
+        icon: '✅',
+        title: 'Issue gets resolved',
+        desc: 'The admin team picks it up, updates the status, and you get notified when it\'s fixed.',
+        detail: 'You\'re kept in the loop',
+    },
 ]
 
-const tech = [
-    { icon: '🟢', name: 'Node.js' }, { icon: '🚂', name: 'Express' },
-    { icon: '🐘', name: 'PostgreSQL' }, { icon: '🌍', name: 'PostGIS' },
-    { icon: '🔴', name: 'Redis' }, { icon: '🐂', name: 'BullMQ' },
-    { icon: '⚛️', name: 'React' }, { icon: '⚡', name: 'Vite' },
-    { icon: '🗺️', name: 'Leaflet' }, { icon: '🐳', name: 'Docker' },
-    { icon: '🔒', name: 'JWT' }, { icon: '🔁', name: 'nginx' },
+const statuses = [
+    {
+        label: 'Open',
+        color: 'bg-red-50 text-red-600 border-red-200',
+        dot: 'bg-red-500',
+        desc: 'Reported, waiting to be picked up',
+    },
+    {
+        label: 'In Progress',
+        color: 'bg-amber-50 text-amber-600 border-amber-200',
+        dot: 'bg-amber-400',
+        desc: 'Team is actively working on it',
+    },
+    {
+        label: 'Resolved',
+        color: 'bg-green-50 text-green-700 border-green-200',
+        dot: 'bg-green-500',
+        desc: 'Fixed and verified — issue closed',
+    },
 ]
 
-const cats = [
-    { label: 'Roads & Potholes', color: 'bg-red-100 text-red-700' },
-    { label: 'Street Lighting', color: 'bg-orange-100 text-orange-700' },
-    { label: 'Waterlogging', color: 'bg-yellow-100 text-yellow-700' },
-    { label: 'Garbage & Waste', color: 'bg-green-100 text-green-700' },
-    { label: 'Water Supply', color: 'bg-blue-100 text-blue-700' },
-    { label: 'Sewage & Drainage', color: 'bg-purple-100 text-purple-700' },
-    { label: 'Public Safety', color: 'bg-pink-100 text-pink-700' },
-    { label: 'Parks & Recreation', color: 'bg-teal-100 text-teal-700' },
-    { label: 'Public Transport', color: 'bg-indigo-100 text-indigo-700' },
-    { label: 'Encroachment', color: 'bg-amber-100 text-amber-700' },
-    { label: 'Tree Hazards', color: 'bg-emerald-100 text-emerald-700' },
-    { label: 'Other', color: 'bg-slate-100 text-slate-700' },
+const mockIssues = [
+    { title: 'Deep pothole near school gate', category: 'Roads', status: 'In Progress', votes: 34, dot: 'bg-amber-400', statusStyle: 'bg-amber-50 text-amber-600 border-amber-200', time: '2h ago' },
+    { title: 'Street light broken for 3 weeks', category: 'Lighting', status: 'Open', votes: 18, dot: 'bg-red-500', statusStyle: 'bg-red-50 text-red-600 border-red-200', time: '5h ago' },
+    { title: 'Waterlogging at main crossing', category: 'Drainage', status: 'Resolved', votes: 52, dot: 'bg-green-500', statusStyle: 'bg-green-50 text-green-700 border-green-200', time: '1d ago' },
 ]
 
-const mockPins = [
-    { top: '15%', left: '10%', label: 'Pothole', dotColor: 'bg-red-500', statusClass: 'bg-red-100 text-red-600' },
-    { top: '50%', left: '50%', label: 'Street light', dotColor: 'bg-orange-400', statusClass: 'bg-amber-100 text-amber-600' },
-    { top: '65%', left: '20%', label: 'Waterlogging', dotColor: 'bg-blue-500', statusClass: 'bg-red-100 text-red-600' },
-    { top: '20%', left: '65%', label: 'Garbage', dotColor: 'bg-green-500', statusClass: 'bg-green-100 text-green-700' },
+const faqs = [
+    { q: 'Do I need to create an account?', a: 'Yes — a free account lets you report issues, upvote, and track what happens to your reports. It takes 30 seconds to sign up.' },
+    { q: 'Who actually sees and fixes the issues?', a: 'Admins from the civic authority review the map. High-upvote issues get prioritised. You\'re notified when status changes.' },
+    { q: 'What if my issue stays Open for too long?', a: 'Upvotes help. The more neighbours confirm the same issue, the higher it climbs in the admin queue. Share it with people nearby.' },
+    { q: 'Can I report anonymously?', a: 'Not currently — a verified account helps prevent spam and lets us notify you when your issue is resolved.' },
 ]
-const pinStatuses = ['Open', 'In progress', 'Open', 'Resolved']
 
 export default function LandingPage() {
     return (
-        <div className="w-full min-h-screen bg-stone-50 text-stone-900 font-sans overflow-x-hidden">
+        <div className="w-full min-h-screen bg-white text-stone-900 font-sans overflow-x-hidden">
+
+
 
             {/* ── HERO ─────────────────────────────────────────────────────── */}
-            <section className="relative w-full min-h-screen flex flex-col lg:flex-row items-stretch">
+            <section className="max-w-6xl mx-auto px-5 sm:px-8 pt-16 pb-12 sm:pt-24 sm:pb-16">
+                <div className="inline-flex items-center gap-2 border border-stone-200 rounded-full px-3.5 py-1.5 text-xs font-medium text-stone-500 mb-6">
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    Civic issue reporting — free for citizens
+                </div>
 
-                {/* Left panel */}
-                <div className="relative z-10 flex flex-col justify-center w-full lg:w-1/2 px-8 md:px-16 py-24 bg-stone-50">
-                    {/* grid texture */}
-                    <div className="absolute inset-0 opacity-40"
-                        style={{
-                            backgroundImage: 'linear-gradient(rgba(0,0,0,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.06) 1px,transparent 1px)',
-                            backgroundSize: '32px 32px'
-                        }}
-                    />
-                    <div className="relative z-10">
-                        <div className="inline-flex items-center gap-2 border border-stone-200 bg-white rounded-full px-4 py-1.5 text-xs font-medium text-stone-500 mb-8 shadow-sm">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                            </span>
-                            Civic issue reporting platform
-                        </div>
-
-                        <h1 className="text-6xl md:text-7xl xl:text-8xl font-black leading-[0.92] tracking-tight mb-8">
-                            Your city.<br />
-                            <span className="text-blue-600">Your voice.</span><br />
-                            Real change.
+                <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+                    <div>
+                        <h1 className="text-4xl sm:text-5xl xl:text-6xl font-black leading-[1.05] tracking-tight mb-5">
+                            Broken city?<br />
+                            <span className="text-blue-600">Report it.</span><br />
+                            Get it fixed.
                         </h1>
-
-                        <p className="text-base md:text-lg text-stone-500 font-light max-w-md leading-relaxed mb-10">
-                            Report broken infrastructure, unsafe roads, and civic issues — pinned to a map, routed to the right people, resolved faster.
+                        <p className="text-base sm:text-lg text-stone-500 leading-relaxed mb-8 max-w-lg">
+                            CivicVoice lets you report potholes, broken streetlights, garbage pileups, and other civic problems — pinned exactly on a map, visible to your neighbours, and tracked until resolved.
                         </p>
-
-                        <div className="flex items-center gap-4 flex-wrap">
+                        <div className="flex flex-wrap items-center gap-3">
                             <Link to="/report"
-                                className="bg-stone-900 text-white px-7 py-3.5 rounded-full text-sm font-semibold hover:bg-blue-600 transition-all duration-200 inline-flex items-center gap-2 shadow-md hover:shadow-lg hover:-translate-y-0.5">
-                                Report an issue
+                                className="bg-blue-600 text-white px-6 py-3 rounded-full text-sm font-bold hover:bg-blue-700 transition-all duration-200 inline-flex items-center gap-2 shadow-sm hover:shadow-md hover:-translate-y-0.5">
+                                Report a problem
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M7 17L17 7M17 7H7M17 7v10" /></svg>
                             </Link>
                             <Link to="/map"
-                                className="text-stone-500 text-sm font-medium hover:text-stone-900 transition-colors inline-flex items-center gap-1.5">
-                                Explore the map
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                                className="border border-stone-200 text-stone-700 px-6 py-3 rounded-full text-sm font-semibold hover:border-stone-400 transition-colors inline-flex items-center gap-2">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                                See issues near me
                             </Link>
                         </div>
-
-                        {/* stat strip */}
-                        <div className="mt-14 grid grid-cols-3 gap-3">
-                            {[
-                                { n: 'PostGIS', l: 'Geo queries' },
-                                { n: 'Redis', l: '30s TTL cache' },
-                                { n: 'BullMQ', l: 'Async jobs' },
-                            ].map(s => (
-                                <div key={s.n} className="bg-white border border-stone-200 rounded-xl px-4 py-3 shadow-sm">
-                                    <div className="text-sm font-bold text-stone-900">{s.n}</div>
-                                    <div className="text-xs text-stone-400 mt-0.5">{s.l}</div>
-                                </div>
-                            ))}
-                        </div>
                     </div>
-                </div>
 
-                {/* Right panel — map card */}
-                <div className="hidden lg:flex w-full lg:w-1/2 bg-stone-100 items-center justify-center p-12 border-l border-stone-200">
-                    <div className="w-full max-w-lg bg-white rounded-2xl overflow-hidden shadow-xl border border-stone-200">
-                        {/* map preview */}
-                        <div className="relative h-72 bg-[#e8efe4] overflow-hidden">
-                            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 560 288" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-                                <rect width="560" height="288" fill="#e8efe4" />
-                                {/* buildings */}
-                                {[[20, 20, 90, 70], [130, 20, 110, 45], [230, 20, 80, 90], [330, 40, 100, 55], [450, 18, 90, 100], [20, 110, 70, 90], [110, 100, 90, 70], [230, 145, 110, 70], [360, 130, 90, 85], [470, 150, 72, 75]].map(([x, y, w, h], i) => (
-                                    <rect key={i} x={x} y={y} width={w} height={h} rx="3" fill="#d4e0ce" opacity="0.9" />
-                                ))}
-                                {/* roads */}
-                                <line x1="0" y1="100" x2="560" y2="100" stroke="#fff" strokeWidth="10" />
-                                <line x1="0" y1="135" x2="560" y2="135" stroke="#f5f4f0" strokeWidth="4" />
-                                <line x1="130" y1="0" x2="130" y2="288" stroke="#fff" strokeWidth="10" />
-                                <line x1="225" y1="0" x2="225" y2="288" stroke="#f5f4f0" strokeWidth="4" />
-                                <line x1="340" y1="0" x2="340" y2="288" stroke="#fff" strokeWidth="10" />
-                                <line x1="460" y1="0" x2="460" y2="288" stroke="#f5f4f0" strokeWidth="4" />
-                                <line x1="0" y1="200" x2="560" y2="200" stroke="#f5f4f0" strokeWidth="4" />
-                                {/* pins */}
-                                {[[65, 55, '#ef4444'], [280, 185, '#f97316'], [55, 165, '#3b82f6'], [395, 70, '#22c55e']].map(([cx, cy, fill], i) => (
-                                    <g key={i}>
-                                        <circle cx={cx} cy={cy} r="13" fill={fill} opacity="0.2" />
-                                        <circle cx={cx} cy={cy} r="7" fill={fill} />
-                                    </g>
-                                ))}
-                            </svg>
-                            {/* floating pin labels */}
-                            {mockPins.map((p, i) => (
-                                <div key={i} className="absolute flex items-center gap-1.5 bg-white border border-stone-200 rounded-full px-2.5 py-1 text-xs font-medium text-stone-700 shadow-md whitespace-nowrap"
-                                    style={{ top: p.top, left: p.left }}>
-                                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${p.dotColor}`} />
-                                    {p.label}
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${p.statusClass}`}>
-                                        {pinStatuses[i]}
+                    {/* Live issues preview card */}
+                    <div className="bg-stone-50 border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="px-4 py-3 border-b border-stone-200 flex items-center justify-between bg-white">
+                            <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">Recent issues near you</span>
+                            <span className="text-xs text-stone-400">Live</span>
+                        </div>
+                        <div className="divide-y divide-stone-100">
+                            {mockIssues.map((issue, i) => (
+                                <div key={i} className="bg-white px-4 py-3.5 flex items-start gap-3 hover:bg-stone-50 transition-colors">
+                                    <span className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${issue.dot}`} />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-semibold text-stone-800 truncate">{issue.title}</div>
+                                        <div className="text-xs text-stone-400 mt-0.5 flex items-center gap-2">
+                                            <span>{issue.category}</span>
+                                            <span>·</span>
+                                            <span>{issue.votes} upvotes</span>
+                                            <span>·</span>
+                                            <span>{issue.time}</span>
+                                        </div>
+                                    </div>
+                                    <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border flex-shrink-0 ${issue.statusStyle}`}>
+                                        {issue.status}
                                     </span>
                                 </div>
                             ))}
                         </div>
-                        <div className="px-5 py-4 flex items-center justify-between border-t border-stone-100">
-                            <div>
-                                <div className="text-sm font-bold text-stone-900">Live issue map</div>
-                                <div className="text-xs text-stone-400 mt-0.5">check active issues nearby</div>
-                            </div>
-                            <Link to="/map" className="text-sm text-blue-600 font-semibold hover:gap-2 transition-all flex items-center gap-1">
-                                Open map →
+                        <div className="px-4 py-3 border-t border-stone-100 bg-white">
+                            <Link to="/map" className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                                Open full map →
                             </Link>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* ── STRIP ────────────────────────────────────────────────────── */}
-            <div className="w-full border-y border-stone-200 bg-white overflow-x-auto">
-                <div className="flex min-w-max">
-                    {[
-                        { icon: '📍', text: 'Pin exact location' },
-                        { icon: '🗳️', text: 'Community upvotes' },
-                        { icon: '🔔', text: 'Async notifications' },
-                        { icon: '🛡️', text: 'Role-based access' },
-                        { icon: '⚡', text: 'Redis-cached queries' },
-                        { icon: '🐳', text: 'Docker ready' },
-                    ].map((item, i) => (
-                        <div key={i} className="flex items-center gap-2.5 px-8 py-4 border-r border-stone-100 flex-shrink-0">
-                            <span className="text-base">{item.icon}</span>
-                            <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider whitespace-nowrap">{item.text}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* ── FEATURES ─────────────────────────────────────────────────── */}
-            <section className="w-full px-8 md:px-16 py-24">
-                <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-3">Features</p>
-                <h2 className="text-4xl md:text-5xl font-black tracking-tight text-stone-900 mb-14 max-w-xl leading-tight">
-                    Everything a city needs to listen
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-stone-200 border border-stone-200 rounded-2xl overflow-hidden">
-                    {features.map(f => (
-                        <div key={f.title} className="bg-white hover:bg-stone-50 transition-colors p-8 group">
-                            <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-lg mb-5 group-hover:bg-blue-50 transition-colors">
-                                {f.icon}
+            {/* ── PROBLEM ─────────────────────────────────────────────────── */}
+            <section className="bg-stone-900 py-16 sm:py-20">
+                <div className="max-w-6xl mx-auto px-5 sm:px-8">
+                    <p className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-3">Sound familiar?</p>
+                    <h2 className="text-3xl sm:text-4xl font-black text-white mb-3 leading-tight">
+                        We've all been there.
+                    </h2>
+                    <p className="text-stone-400 text-sm sm:text-base mb-10 max-w-xl">
+                        You notice a problem. You don't know who to call. Nothing happens. CivicVoice gives you one place to report it — and a way to hold the system accountable.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {problems.map((p, i) => (
+                            <div key={i} className="bg-stone-800 border border-stone-700 rounded-xl px-4 py-4 flex items-center gap-3 hover:border-stone-500 transition-colors">
+                                <span className="text-xl flex-shrink-0">{p.icon}</span>
+                                <div>
+                                    <div className="text-sm font-semibold text-white leading-snug">{p.label}</div>
+                                    <div className="text-xs text-stone-500 mt-0.5">{p.sub}</div>
+                                </div>
                             </div>
-                            <h3 className="text-sm font-bold text-stone-900 mb-2">{f.title}</h3>
-                            <p className="text-sm text-stone-500 leading-relaxed font-light">{f.desc}</p>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </section>
 
             {/* ── HOW IT WORKS ─────────────────────────────────────────────── */}
-            <section className="w-full bg-stone-900 px-8 md:px-16 py-24">
-                <p className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-3">How it works</p>
-                <h2 className="text-4xl md:text-5xl font-black tracking-tight text-white mb-14 max-w-xl leading-tight">
-                    From pothole to resolved
+            <section className="py-16 sm:py-24 max-w-6xl mx-auto px-5 sm:px-8">
+                <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-3">How it works</p>
+                <h2 className="text-3xl sm:text-4xl font-black text-stone-900 mb-3 leading-tight">
+                    Report in under a minute.
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                <p className="text-stone-500 text-sm sm:text-base mb-12 max-w-lg">
+                    Four simple steps from spotting a problem to seeing it resolved.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {steps.map((s, i) => (
-                        <div key={s.num} className="relative">
+                        <div key={i} className="relative">
+                            {/* connector line on desktop */}
                             {i < steps.length - 1 && (
-                                <div className="hidden lg:block absolute top-4 left-10 right-0 h-px bg-stone-700" />
+                                <div className="hidden lg:block absolute top-5 left-[calc(50%+24px)] right-[-50%] h-px bg-stone-200 z-0" />
                             )}
-                            <div className="relative z-10 w-8 h-8 rounded-full border border-stone-600 flex items-center justify-center text-xs font-bold text-stone-500 bg-stone-900 mb-5">
-                                {s.num}
+                            <div className="relative z-10 flex flex-col">
+                                <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-lg mb-4 shadow-sm">
+                                    {s.icon}
+                                </div>
+                                <div className="text-xs font-bold text-stone-400 mb-1">Step {s.num}</div>
+                                <h3 className="text-base font-bold text-stone-900 mb-2 leading-snug">{s.title}</h3>
+                                <p className="text-sm text-stone-500 leading-relaxed mb-3">{s.desc}</p>
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                                    {s.detail}
+                                </span>
                             </div>
-                            <div className="text-sm font-bold text-white mb-2">{s.title}</div>
-                            <div className="text-sm text-stone-500 leading-relaxed font-light">{s.desc}</div>
                         </div>
                     ))}
                 </div>
-            </section>
 
-            {/* ── TECH STACK ───────────────────────────────────────────────── */}
-            <section className="w-full bg-stone-100 px-8 md:px-16 py-24">
-                <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-3">Tech stack</p>
-                <h2 className="text-4xl md:text-5xl font-black tracking-tight text-stone-900 mb-14 max-w-xl leading-tight">
-                    Built for scale, not just demos
-                </h2>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-3">
-                    {tech.map(t => (
-                        <div key={t.name}
-                            className="bg-white border border-stone-200 rounded-xl py-4 px-2 flex flex-col items-center gap-2 hover:border-blue-400 hover:-translate-y-0.5 transition-all cursor-default shadow-sm">
-                            <span className="text-xl">{t.icon}</span>
-                            <span className="text-[11px] font-semibold text-stone-500">{t.name}</span>
-                        </div>
-                    ))}
+                <div className="mt-10 sm:mt-12 flex flex-wrap gap-3">
+                    <Link to="/report"
+                        className="bg-stone-900 text-white px-6 py-3 rounded-full text-sm font-bold hover:bg-blue-600 transition-colors inline-flex items-center gap-2">
+                        Try reporting now
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M7 17L17 7M17 7H7M17 7v10" /></svg>
+                    </Link>
                 </div>
             </section>
 
-            {/* ── CATEGORIES ───────────────────────────────────────────────── */}
-            <section className="w-full px-8 md:px-16 py-24">
-                <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-3">Issue categories</p>
-                <h2 className="text-4xl md:text-5xl font-black tracking-tight text-stone-900 mb-14 max-w-xl leading-tight">
-                    Every civic problem, covered
+            {/* ── STATUS EXPLAINER ─────────────────────────────────────────── */}
+            <section className="bg-stone-50 border-y border-stone-100 py-16 sm:py-20">
+                <div className="max-w-6xl mx-auto px-5 sm:px-8">
+                    <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-3">Issue tracking</p>
+                    <h2 className="text-3xl sm:text-4xl font-black text-stone-900 mb-3 leading-tight">
+                        Every issue has a status.
+                    </h2>
+                    <p className="text-stone-500 text-sm sm:text-base mb-10 max-w-lg">
+                        You're never left wondering. Once you report, you can follow exactly where things stand.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {statuses.map((s, i) => (
+                            <div key={i} className="bg-white border border-stone-200 rounded-2xl p-6">
+                                <div className={`inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full border mb-4 ${s.color}`}>
+                                    <span className={`w-2 h-2 rounded-full ${s.dot}`} />
+                                    {s.label}
+                                </div>
+                                <p className="text-sm text-stone-600 leading-relaxed">{s.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* mini flow diagram */}
+                    <div className="mt-8 bg-white border border-stone-200 rounded-2xl p-5 sm:p-6">
+                        <p className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-4">Typical lifecycle</p>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                            {[
+                                { label: 'You report', icon: '📍' },
+                                { label: 'Neighbours upvote', icon: '👥' },
+                                { label: 'Admin reviews', icon: '👁️' },
+                                { label: 'Work begins', icon: '🔧' },
+                                { label: 'You\'re notified', icon: '🔔' },
+                            ].map((item, i) => (
+                                <div key={i} className="flex items-center gap-3">
+                                    <div className="flex flex-col items-center gap-1">
+                                        <div className="w-9 h-9 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-center text-base">
+                                            {item.icon}
+                                        </div>
+                                        <span className="text-[11px] text-stone-500 font-medium whitespace-nowrap">{item.label}</span>
+                                    </div>
+                                    {i < 4 && (
+                                        <svg className="text-stone-300 flex-shrink-0 mb-3.5 hidden sm:block" width="20" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                                    )}
+                                    {i < 4 && (
+                                        <svg className="text-stone-300 flex-shrink-0 rotate-90 sm:hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ── FAQ ──────────────────────────────────────────────────────── */}
+            <section className="py-16 sm:py-24 max-w-6xl mx-auto px-5 sm:px-8">
+                <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-3">Questions</p>
+                <h2 className="text-3xl sm:text-4xl font-black text-stone-900 mb-10 leading-tight">
+                    Common questions
                 </h2>
-                <div className="flex flex-wrap gap-2.5">
-                    {cats.map(c => (
-                        <span key={c.label}
-                            className={`${c.color} px-4 py-2 rounded-full text-sm font-medium cursor-default hover:opacity-80 transition-opacity`}>
-                            {c.label}
-                        </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-stone-200 border border-stone-200 rounded-2xl overflow-hidden">
+                    {faqs.map((faq, i) => (
+                        <div key={i} className="bg-white p-6 hover:bg-stone-50 transition-colors">
+                            <h3 className="text-sm font-bold text-stone-900 mb-2">{faq.q}</h3>
+                            <p className="text-sm text-stone-500 leading-relaxed">{faq.a}</p>
+                        </div>
                     ))}
                 </div>
             </section>
 
             {/* ── CTA ──────────────────────────────────────────────────────── */}
-            <div className="w-full px-8 md:px-16 pb-24">
-                <div className="w-full bg-blue-600 rounded-2xl px-10 py-16 flex flex-col md:flex-row items-center justify-between gap-8">
-                    <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-tight max-w-md">
-                        Ready to make your city better?
-                    </h2>
-                    <div className="flex items-center gap-4 flex-wrap">
+            <div className="max-w-6xl mx-auto px-5 sm:px-8 pb-16 sm:pb-24">
+                <div className="bg-blue-600 rounded-2xl px-8 py-12 sm:px-12 sm:py-14 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+                    <div>
+                        <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight mb-2">
+                            See a problem?<br />Report it today.
+                        </h2>
+                        <p className="text-blue-200 text-sm sm:text-base max-w-sm">
+                            It takes under a minute. Your report goes on the map and your neighbours can back it up.
+                        </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-shrink-0">
                         <Link to="/login"
-                            className="bg-white text-blue-700 px-7 py-3.5 rounded-full text-sm font-bold hover:bg-blue-50 transition-colors shadow-md whitespace-nowrap">
-                            Get started →
+                            className="bg-white text-blue-700 px-6 py-3 rounded-full text-sm font-bold hover:bg-blue-50 transition-colors shadow-sm whitespace-nowrap">
+                            Create free account
                         </Link>
                         <Link to="/map"
                             className="text-white/70 text-sm font-medium hover:text-white transition-colors whitespace-nowrap inline-flex items-center gap-1">
-                            View the map ↗
+                            Browse the map →
                         </Link>
                     </div>
                 </div>
             </div>
 
             {/* ── FOOTER ───────────────────────────────────────────────────── */}
-            <footer className="w-full border-t border-stone-200 px-8 md:px-16 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <Link to="/" className="flex items-center gap-2 text-sm font-black text-stone-900">
-                    <span className="w-2 h-2 rounded-full bg-blue-600" />
-                    CivicVoice
-                </Link>
-                <p className="text-xs text-stone-400">Built by Sambhav Garg · Bennett University CSE 2027</p>
-                <div className="flex items-center gap-6">
-                    {[['Login', '/login'], ['Report', '/report'], ['Map', '/map']].map(([label, href]) => (
-                        <Link key={label} to={href} className="text-xs text-stone-400 hover:text-stone-900 transition-colors font-medium">{label}</Link>
-                    ))}
+            <footer className="border-t border-stone-100 py-8">
+                <div className="max-w-6xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <Link to="/" className="flex items-center gap-2 text-sm font-black text-stone-900">
+                        <span className="w-5 h-5 rounded-md bg-blue-600 flex items-center justify-center text-white text-[10px] font-black">C</span>
+                        CivicVoice
+                    </Link>
+                    <p className="text-xs text-stone-400">Built by Sambhav Garg · Bennett University CSE 2027</p>
+                    <div className="flex items-center gap-5">
+                        {[['Login', '/login'], ['Report', '/report'], ['Map', '/map']].map(([label, href]) => (
+                            <Link key={label} to={href} className="text-xs text-stone-400 hover:text-stone-900 transition-colors font-medium">{label}</Link>
+                        ))}
+                    </div>
                 </div>
             </footer>
 

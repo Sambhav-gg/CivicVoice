@@ -1,155 +1,119 @@
-import { useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
-const navStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap');
-
-  .cvnav {
-    --ink: #0f1117;
-    --ink2: #3a3d4a;
-    --ink3: #7a7f94;
-    --bg: #f5f4f0;
-    --accent: #2563eb;
-    --white: #ffffff;
-    --border: rgba(15,17,23,0.10);
-    --red: #e63946;
-
-    position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 3rem; height: 60px;
-    background: rgba(245,244,240,0.92);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border);
-    font-family: 'DM Sans', sans-serif;
-  }
-
-  .cvnav-logo {
-    font-family: 'Syne', sans-serif;
-    font-weight: 800; font-size: 1.1rem;
-    color: var(--ink); letter-spacing: -0.5px;
-    display: flex; align-items: center; gap: 7px;
-    text-decoration: none; flex-shrink: 0;
-  }
-  .cvnav-logo-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--accent); flex-shrink: 0;
-  }
-
-  .cvnav-links {
-    display: flex; align-items: center; gap: 0.25rem;
-  }
-
-  .cvnav-link {
-    font-size: 0.875rem; color: var(--ink2); text-decoration: none;
-    font-weight: 400; padding: 0.35rem 0.75rem; border-radius: 6px;
-    transition: all 0.15s; white-space: nowrap;
-  }
-  .cvnav-link:hover { color: var(--ink); background: rgba(15,17,23,0.05); }
-  .cvnav-link.active { color: var(--ink); font-weight: 500; }
-
-  .cvnav-link-admin {
-    font-size: 0.875rem; color: var(--red); text-decoration: none;
-    font-weight: 500; padding: 0.35rem 0.75rem; border-radius: 6px;
-    transition: all 0.15s;
-  }
-  .cvnav-link-admin:hover { background: rgba(230,57,70,0.08); }
-
-  .cvnav-divider {
-    width: 1px; height: 18px; background: var(--border);
-    margin: 0 0.5rem; flex-shrink: 0;
-  }
-
-  .cvnav-user {
-    font-size: 0.8rem; color: var(--ink3); font-weight: 400;
-    padding: 0.35rem 0.5rem; max-width: 120px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-
-  .cvnav-btn-ghost {
-    background: none; border: 1px solid var(--border);
-    color: var(--ink2); padding: 0.35rem 0.9rem;
-    border-radius: 6px; font-size: 0.875rem; font-weight: 400;
-    cursor: pointer; transition: all 0.15s;
-    font-family: 'DM Sans', sans-serif;
-    white-space: nowrap;
-  }
-  .cvnav-btn-ghost:hover { border-color: rgba(15,17,23,0.25); color: var(--ink); background: rgba(15,17,23,0.04); }
-
-  .cvnav-btn-primary {
-    background: var(--ink); color: var(--white);
-    padding: 0.4rem 1.1rem; border-radius: 999px;
-    font-size: 0.875rem; font-weight: 500;
-    text-decoration: none; transition: all 0.15s;
-    white-space: nowrap; font-family: 'DM Sans', sans-serif;
-    border: none; cursor: pointer;
-  }
-  .cvnav-btn-primary:hover { background: var(--accent); }
-
-  .cvnav-spacer { flex: 1; }
-
-  /* push page content below fixed nav */
-  .cvnav-offset { height: 60px; }
-
-  @media (max-width: 640px) {
-    .cvnav { padding: 0 1.25rem; }
-    .cvnav-user { display: none; }
-    .cvnav-link-label { display: none; }
-  }
-`
-
 export default function Navbar() {
-    const { user, logout } = useAuth()
-    const navigate = useNavigate()
-    const location = useLocation()
-    const injected = useRef(false)
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [menuOpen, setMenuOpen] = useState(false)
 
-    useEffect(() => {
-        if (!injected.current && !document.getElementById('cvnav-styles')) {
-            const tag = document.createElement('style')
-            tag.id = 'cvnav-styles'
-            tag.textContent = navStyles
-            document.head.appendChild(tag)
-            injected.current = true
-        }
-    }, [])
+  const handleLogout = () => { logout(); navigate('/login'); setMenuOpen(false) }
+  const isActive = (path) => location.pathname === path
 
-    const handleLogout = () => { logout(); navigate('/login') }
-    const isActive = (path) => location.pathname === path ? 'cvnav-link active' : 'cvnav-link'
+  return (
+    <>
+      <nav className="fixed top-0 left-0 right-0 z-[200] bg-white/90 backdrop-blur-md border-b border-stone-100 h-14">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 h-full flex items-center justify-between">
 
-    return (
-        <>
-            <nav className="cvnav">
-                <Link to="/" className="cvnav-logo">
-                    <span className="cvnav-logo-dot" />
-                    CivicVoice
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2 font-black text-sm text-stone-900 flex-shrink-0">
+            <span className="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-black">C</span>
+            CivicVoice
+          </Link>
+
+          {/* Desktop links */}
+          <div className="hidden sm:flex items-center gap-1">
+            <Link to="/map"
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isActive('/map') ? 'text-stone-900 bg-stone-100' : 'text-stone-500 hover:text-stone-900 hover:bg-stone-50'}`}>
+              Map
+            </Link>
+
+            {user ? (
+              <>
+                <Link to="/report"
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isActive('/report') ? 'text-stone-900 bg-stone-100' : 'text-stone-500 hover:text-stone-900 hover:bg-stone-50'}`}>
+                  Report issue
                 </Link>
+                {user.role === 'admin' && (
+                  <Link to="/admin"
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors">
+                    Admin
+                  </Link>
+                )}
+                <div className="w-px h-4 bg-stone-200 mx-1" />
+                <span className="text-xs text-stone-400 max-w-[100px] truncate px-1">{user.name}</span>
+                <button onClick={handleLogout}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium text-stone-500 hover:text-stone-900 hover:bg-stone-50 border border-stone-200 hover:border-stone-300 transition-all">
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="w-px h-4 bg-stone-200 mx-1" />
+                <Link to="/login"
+                  className="bg-stone-900 text-white text-sm font-semibold px-4 py-1.5 rounded-full hover:bg-blue-600 transition-colors">
+                  Get started
+                </Link>
+              </>
+            )}
+          </div>
 
-                <div className="cvnav-spacer" />
+          {/* Mobile: right side */}
+          <div className="flex sm:hidden items-center gap-2">
+            {!user && (
+              <Link to="/login" className="bg-blue-600 text-white text-xs font-semibold px-3.5 py-1.5 rounded-full">
+                Get started
+              </Link>
+            )}
+            <button onClick={() => setMenuOpen(o => !o)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 transition-colors">
+              {menuOpen
+                ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 12h18M3 6h18M3 18h18" /></svg>
+              }
+            </button>
+          </div>
+        </div>
 
-                <div className="cvnav-links">
-                    <Link to="/map" className={isActive('/map')}>Map</Link>
-
-                    {user ? (
-                        <>
-                            <Link to="/report" className={isActive('/report')}>Report issue</Link>
-                            {user.role === 'admin' && (
-                                <Link to="/admin" className="cvnav-link-admin">Admin</Link>
-                            )}
-                            <div className="cvnav-divider" />
-                            <span className="cvnav-user">{user.name}</span>
-                            <button className="cvnav-btn-ghost" onClick={handleLogout}>Logout</button>
-                        </>
-                    ) : (
-                        <>
-                            <div className="cvnav-divider" />
-                            <Link to="/login" className="cvnav-btn-primary">Get started</Link>
-                        </>
-                    )}
+        {/* Mobile drawer */}
+        {menuOpen && (
+          <div className="sm:hidden bg-white border-t border-stone-100 px-5 py-3 flex flex-col gap-1 shadow-lg">
+            <Link to="/map" onClick={() => setMenuOpen(false)}
+              className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive('/map') ? 'bg-stone-100 text-stone-900' : 'text-stone-600 hover:bg-stone-50'}`}>
+              Map
+            </Link>
+            {user ? (
+              <>
+                <Link to="/report" onClick={() => setMenuOpen(false)}
+                  className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive('/report') ? 'bg-stone-100 text-stone-900' : 'text-stone-600 hover:bg-stone-50'}`}>
+                  Report issue
+                </Link>
+                {user.role === 'admin' && (
+                  <Link to="/admin" onClick={() => setMenuOpen(false)}
+                    className="px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors">
+                    Admin
+                  </Link>
+                )}
+                <div className="border-t border-stone-100 mt-1 pt-2 flex items-center justify-between">
+                  <span className="text-xs text-stone-400 px-3">{user.name}</span>
+                  <button onClick={handleLogout}
+                    className="px-3 py-2 text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors">
+                    Logout
+                  </button>
                 </div>
-            </nav>
-            <div className="cvnav-offset" />
-        </>
-    )
+              </>
+            ) : (
+              <Link to="/login" onClick={() => setMenuOpen(false)}
+                className="px-3 py-2.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors">
+                Log in
+              </Link>
+            )}
+          </div>
+        )}
+      </nav>
+      {/* offset */}
+      <div className="h-14" />
+    </>
+  )
 }

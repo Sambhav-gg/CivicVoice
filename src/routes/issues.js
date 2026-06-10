@@ -121,7 +121,20 @@ router.get('/', async (req, res, next) => {
         const { cursor, limit = 20, category, status } = req.query
         const take = Math.min(parseInt(limit), 50)
 
-        let query = `SELECT id, title, category, status, upvotes, address, created_at FROM issues WHERE 1=1`
+        let query = `
+    SELECT
+        id,
+        title,
+        category,
+        status,
+        upvotes,
+        address,
+        created_at,
+        ST_Y(location::geometry) AS lat,
+        ST_X(location::geometry) AS lng
+    FROM issues
+    WHERE 1=1
+`
         const params = []
         let idx = 1
 
