@@ -3,12 +3,21 @@ const router = express.Router()
 const db = require('../db')
 const { notificationQueue } = require('../queues/notificationWorker')
 const redis = require('../db/redis')
+const { upload } = require('../config/cloudinary')
+const uploadToCloudinary = require('../utils/uploadToCloudinary')
 const { authenticate, requireAdmin } = require('../middleware/authenticate')
+const { getIO } = require('../socket')
 
-// POST /api/issues — report a new issue
-router.post('/', async (req, res, next) => {
+// POST /api/issues — report a new issue (with optional image upload)
+router.post('/', upload.single('image'), async (req, res, next) => {
     try {
-        const { title, description, category, lat, lng, address, image_url, user_id } = req.body
+        const { title, description, category, lat, lng, address, user_id } = req.body
+        let image_url = null
+
+        if (req.file) {
+            const uploaded = await uploadToCloudinary(req.file.buffer)
+            image_url = uploaded.secure_url
+        }
 
         if (!title || !lat || !lng) {
             return res.status(400).json({ success: false, message: 'title, lat, lng are required' })
@@ -16,12 +25,23 @@ router.post('/', async (req, res, next) => {
 
         const result = await db.query(
             `INSERT INTO issues (title, description, category, location, address, image_url, user_id)
-       VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($5, $4), 4326), $6, $7, $8)
-       RETURNING id, title, category, status, upvotes, address, created_at`,
+             VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($5, $4), 4326), $6, $7, $8)
+             RETURNING id, title, category, status, upvotes, address, created_at`,
             [title, description, category, lat, lng, address, image_url, user_id]
         )
 
         await redis.del('nearby:*')
+
+        // Broadcast new issue to all connected clients
+        try {
+            getIO().emit('new_issue', {
+                ...result.rows[0],
+                geojson: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
+                distance_metres: '0',
+                image_url: image_url
+            })
+        } catch (e) { console.error('[WS] broadcast failed:', e.message) }
+
         await notificationQueue.add('notify', {
             type: 'NEW_ISSUE',
             data: { title, address, category }
@@ -50,29 +70,46 @@ router.get('/nearby', async (req, res, next) => {
         }
 
         let query = `
-      SELECT
-        id, title, description, category, status, upvotes, address, image_url, created_at,
-        ST_AsGeoJSON(location)::json AS geojson,
-        ROUND(ST_Distance(location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography)::numeric, 0) AS distance_metres
-      FROM issues
-      WHERE ST_DWithin(
-        location,
-        ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,
-        $3
-      )
-    `
+            SELECT
+                i.id, i.title, i.description, i.category, i.status,
+                COUNT(u.user_id)::int AS upvotes,
+                i.address, i.image_url, i.created_at,
+                ST_AsGeoJSON(i.location)::json AS geojson,
+                ROUND(ST_Distance(i.location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography)::numeric, 0) AS distance_metres
+            FROM issues i
+            LEFT JOIN issue_upvotes u ON u.issue_id = i.id
+            WHERE ST_DWithin(
+                i.location,
+                ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,
+                $3
+            )
+                AND i.status != 'resolved'
+        `
         const params = [lat, lng, radius]
         let idx = 4
 
-        if (category) { query += ` AND category = $${idx++}`; params.push(category) }
-        if (status) { query += ` AND status = $${idx++}`; params.push(status) }
+        if (category) { query += ` AND i.category = $${idx++}`; params.push(category) }
+        if (status) { query += ` AND i.status = $${idx++}`; params.push(status) }
 
-        query += ` ORDER BY distance_metres ASC LIMIT 50`
+        query += ` GROUP BY i.id ORDER BY distance_metres ASC LIMIT 50`
 
         const result = await db.query(query, params)
         await redis.set(cacheKey, result.rows, 30)
 
         res.json({ success: true, count: result.rows.length, issues: result.rows, source: 'db' })
+    } catch (err) {
+        next(err)
+    }
+})
+
+// GET /api/issues/my-votes — MUST be before /:id routes
+router.get('/my-votes', authenticate, async (req, res, next) => {
+    try {
+        const result = await db.query(
+            'SELECT issue_id FROM issue_upvotes WHERE user_id = $1',
+            [req.user.id]
+        )
+        res.json({ success: true, votedIds: result.rows.map(r => r.issue_id) })
     } catch (err) {
         next(err)
     }
@@ -107,17 +144,34 @@ router.get('/', async (req, res, next) => {
 })
 
 // PATCH /api/issues/:id/upvote
-router.patch('/:id/upvote', async (req, res, next) => {
+router.patch('/:id/upvote', authenticate, async (req, res, next) => {
     try {
-        const result = await db.query(
-            `UPDATE issues SET upvotes = upvotes + 1 WHERE id = $1 RETURNING id, upvotes`,
-            [req.params.id]
+        const issueId = parseInt(req.params.id)
+        const userId = req.user.id
+
+        const existing = await db.query(
+            'SELECT 1 FROM issue_upvotes WHERE user_id = $1 AND issue_id = $2',
+            [userId, issueId]
         )
-        if (!result.rows.length) {
-            return res.status(404).json({ success: false, message: 'Issue not found' })
+
+        if (existing.rows.length) {
+            return res.status(409).json({ success: false, message: 'Already upvoted' })
         }
 
+        await db.query(
+            'INSERT INTO issue_upvotes (user_id, issue_id) VALUES ($1, $2)',
+            [userId, issueId]
+        )
+
+        const result = await db.query(
+            `UPDATE issues SET upvotes = upvotes + 1 WHERE id = $1 RETURNING id, upvotes`,
+            [issueId]
+        )
+
         const { id, upvotes } = result.rows[0]
+
+        try { getIO().emit('upvote_updated', { issueId: id, upvotes }) }
+        catch (e) { console.error('[WS] broadcast failed:', e.message) }
 
         if (upvotes === 10 || upvotes === 50 || upvotes === 100) {
             await notificationQueue.add('notify', {
@@ -150,6 +204,10 @@ router.patch('/:id/status', authenticate, requireAdmin, async (req, res, next) =
         }
 
         await redis.del('nearby:*')
+
+        try { getIO().emit('status_updated', { issueId: parseInt(req.params.id), status }) }
+        catch (e) { console.error('[WS] broadcast failed:', e.message) }
+
         await notificationQueue.add('notify', {
             type: 'STATUS_UPDATE',
             data: { issueId: req.params.id, status }

@@ -1,9 +1,9 @@
-// import { useState } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { reportIssue } from '../api/issues'
 import { useNavigate, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -18,56 +18,24 @@ const CATEGORIES = [
     { value: 'sanitation', label: 'Sanitation', icon: '🗑️', color: 'border-green-300 bg-green-50 text-green-700 ring-green-400' },
     { value: 'other', label: 'Other', icon: '📌', color: 'border-stone-300 bg-stone-50 text-stone-600 ring-stone-400' },
 ]
-// const [userLocation, setUserLocation] = useState(null)
+
 function PinOnClick({ onPin }) {
     useMapEvents({ click(e) { onPin(e.latlng) } })
     return null
 }
-// useEffect(() => {
-//     navigator.geolocation.getCurrentPosition(
-//         (position) => {
-//             setUserLocation({
-//                 lat: position.coords.latitude,
-//                 lng: position.coords.longitude
-//             })
-//         },
-//         (err) => {
-//             console.log(err)
-//         }
-//     )
-// }, [])
+
 const pinIcon = L.divIcon({
     className: '',
     html: `
-        <div style="
-            position:relative;
-            width:24px;
-            height:24px;
-        ">
-            <div style="
-                width:24px;
-                height:24px;
-                background:#ef4444;
-                border:3px solid white;
-                border-radius:50% 50% 50% 0;
-                transform:rotate(-45deg);
-                box-shadow:0 2px 8px rgba(0,0,0,0.3);
-            "></div>
-
-            <div style="
-                position:absolute;
-                top:6px;
-                left:6px;
-                width:8px;
-                height:8px;
-                background:white;
-                border-radius:50%;
-            "></div>
+        <div style="position:relative;width:24px;height:24px;">
+            <div style="width:24px;height:24px;background:#ef4444;border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>
+            <div style="position:absolute;top:6px;left:6px;width:8px;height:8px;background:white;border-radius:50%;"></div>
         </div>
     `,
     iconSize: [24, 24],
     iconAnchor: [12, 24],
 })
+
 const userIcon = L.divIcon({
     className: '',
     html: `<div style="width:16px;height:16px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(37,99,235,0.25)"></div>`,
@@ -90,19 +58,17 @@ function CurrentLocation({ onLocationFound }) {
     return null
 }
 
-
 export default function ReportPage() {
     const [userLocation, setUserLocation] = useState(null)
-    const handleLocationFound = (latlng) => {
-        setUserLocation(latlng)
-    }
     const [form, setForm] = useState({ title: '', description: '', category: 'road', address: '' })
     const [pin, setPin] = useState(null)
+    const [imageFile, setImageFile] = useState(null)
+    const [imagePreview, setImagePreview] = useState(null)
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
-    const [step, setStep] = useState(1) // 1 = details, 2 = confirm
     const navigate = useNavigate()
 
+    const handleLocationFound = (latlng) => setUserLocation(latlng)
 
     const handleSubmit = async () => {
         setError('')
@@ -111,16 +77,14 @@ export default function ReportPage() {
         if (!form.address.trim()) return setError('Address / landmark is required')
         setLoading(true)
         try {
-            await reportIssue({ ...form, lat: pin.lat, lng: pin.lng })
+            await reportIssue({ ...form, lat: pin.lat, lng: pin.lng, image: imageFile })
             navigate('/')
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to submit report')
+            setError(err.message || 'Failed to submit report')
         } finally {
             setLoading(false)
         }
     }
-
-    const selectedCat = CATEGORIES.find(c => c.value === form.category)
 
     return (
         <div className="flex" style={{ height: 'calc(100vh - 48px)' }}>
@@ -201,6 +165,41 @@ export default function ReportPage() {
                         />
                     </div>
 
+                    {/* Image Upload */}
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-stone-400 mb-2">
+                            Photo <span className="text-stone-300">(optional)</span>
+                        </label>
+                        <label className="relative flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-stone-200 rounded-xl cursor-pointer bg-stone-50 hover:border-blue-400 hover:bg-blue-50 transition-all overflow-hidden">
+                            {imagePreview
+                                ? <img src={imagePreview} alt="preview" className="h-full w-full object-cover" />
+                                : <>
+                                    <span className="text-2xl mb-1">📷</span>
+                                    <span className="text-xs text-stone-400">Tap to attach a photo</span>
+                                </>
+                            }
+                            <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                className="hidden"
+                                onChange={e => {
+                                    const file = e.target.files[0]
+                                    if (!file) return
+                                    setImageFile(file)
+                                    setImagePreview(URL.createObjectURL(file))
+                                }}
+                            />
+                        </label>
+                        {imagePreview && (
+                            <button
+                                onClick={() => { setImageFile(null); setImagePreview(null) }}
+                                className="mt-1.5 text-xs text-red-400 hover:text-red-600 transition-colors">
+                                ✕ Remove photo
+                            </button>
+                        )}
+                    </div>
+
                     {/* Pin status */}
                     <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${pin
                         ? 'bg-green-50 border-green-200 text-green-700'
@@ -270,26 +269,14 @@ export default function ReportPage() {
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
 
-                    {/* Auto detect user location + fly to it */}
                     <CurrentLocation onLocationFound={handleLocationFound} />
-
-                    {/* Click anywhere to place issue pin */}
                     <PinOnClick onPin={setPin} />
 
-                    {/* User current location */}
                     {userLocation && (
-                        <Marker
-                            position={userLocation}
-                            icon={userIcon}
-                        />
+                        <Marker position={userLocation} icon={userIcon} />
                     )}
-
-                    {/* Issue location */}
                     {pin && (
-                        <Marker
-                            position={pin}
-                            icon={pinIcon}
-                        />
+                        <Marker position={pin} icon={pinIcon} />
                     )}
                 </MapContainer>
             </div>

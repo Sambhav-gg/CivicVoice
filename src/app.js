@@ -4,6 +4,8 @@ const helmet = require('helmet')
 const morgan = require('morgan')
 const rateLimit = require('express-rate-limit')
 const redis = require('./db/redis')
+const http = require('http')
+const { initSocket } = require('./socket')
 if (process.env.NODE_ENV !== 'production') {
     require('dotenv').config()
 }
@@ -55,7 +57,9 @@ app.get('/api/debug-ip', (req, res) => {
 app.use(errorHandler)
 
 const PORT = process.env.PORT || 5000
-app.listen(PORT, async () => {
+const server = http.createServer(app)
+initSocket(server)
+server.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`)
     try {
         await redis.connect()
