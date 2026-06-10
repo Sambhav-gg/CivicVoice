@@ -10,9 +10,7 @@ export const getSocket = () => {
     console.log('SOCKET_URL:', SOCKET_URL)
 
     if (!socket) {
-        socket = io(SOCKET_URL, {
-            transports: ['polling', 'websocket']
-        })
+        socket = io(SOCKET_URL)
 
     }
 
