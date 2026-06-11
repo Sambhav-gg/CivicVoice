@@ -858,7 +858,7 @@ export default function MapPage() {
 
                     {/* Map */}
                     <MapContainer
-                        center={[24.2297, 83.0493]}
+                        center={[28.6139, 77.2090]}
                         zoom={13}
                         style={{ flex: 1, zIndex: 0 }}
                         zoomControl={false}
