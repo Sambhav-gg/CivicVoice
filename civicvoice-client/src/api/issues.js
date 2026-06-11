@@ -6,25 +6,31 @@ export const getNearby = (lat, lng, radius = 3000) =>
 export const getIssues = (params = {}) =>
     client.get('/issues', { params })
 
-export const reportIssue = (data) => {
+export async function reportIssue(data) {
     const formData = new FormData()
-
     formData.append('title', data.title)
-    formData.append('description', data.description || '')
+    formData.append('description', data.description ?? '')
     formData.append('category', data.category)
     formData.append('lat', data.lat)
     formData.append('lng', data.lng)
     formData.append('address', data.address)
+    if (data.user_id) formData.append('user_id', data.user_id)
+    if (data.image) formData.append('image', data.image)
+    if (data.force) formData.append('force', 'true')   // ← new
 
-    if (data.user_id) {
-        formData.append('user_id', data.user_id)
+    const res = await fetch('/api/issues', {
+        method: 'POST',
+        body: formData,
+    })
+
+    const json = await res.json()
+
+    // Don't throw on duplicate — return it so the UI can handle it
+    if (!res.ok && !json.duplicate) {
+        throw new Error(json.message || 'Failed to submit report')
     }
 
-    if (data.image) {
-        formData.append('image', data.image)
-    }
-
-    return client.post('/issues', formData)
+    return json   // { success, duplicate?, nearby?, issue? }
 }
 
 export const upvoteIssue = (id) =>

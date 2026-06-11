@@ -505,8 +505,12 @@ export default function ReportPage() {
     const [imagePreview, setImagePreview] = useState(null)
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
+    const [showSuccess, setShowSuccess] = useState(false)
+    const [duplicateModal, setDuplicateModal] = useState(null)
+
     // Mobile: 0=map, 1=details, 2=photo
     const [mobileStep, setMobileStep] = useState(0)
+
     const navigate = useNavigate()
 
     const handleSubmit = async () => {
@@ -516,8 +520,15 @@ export default function ReportPage() {
         if (!form.address.trim()) return setError('Address / landmark is required')
         setLoading(true)
         try {
-            await reportIssue({ ...form, lat: pin.lat, lng: pin.lng, image: imageFile })
-            navigate('/')
+            const result = await reportIssue({ ...form, lat: pin.lat, lng: pin.lng, image: imageFile })
+
+            if (result?.duplicate && result?.nearby?.length) {
+                setDuplicateModal({ nearby: result.nearby })
+                return
+            }
+
+            setShowSuccess(true)
+            setTimeout(() => navigate('/map'), 2200)
         } catch (err) {
             setError(err.message || 'Failed to submit report')
         } finally {
@@ -613,10 +624,126 @@ export default function ReportPage() {
     )
 
     // ── The map element (shared) ───────────────────────────────────────────────
+    const SuccessToast = () => showSuccess ? (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
+            <div className="bg-white border border-green-200 shadow-2xl rounded-2xl px-8 py-6 flex flex-col items-center gap-3"
+                style={{ animation: 'fadeInUp 0.3s ease-out' }}>
+                <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5">
+                        <path d="M5 12l5 5L20 7" />
+                    </svg>
+                </div>
+                <div className="text-center">
+                    <p className="text-base font-black text-stone-900">Issue reported successfully!</p>
+                    <p className="text-xs text-stone-400 mt-1">Redirecting to map…</p>
+                </div>
+                <button
+                    className="pointer-events-auto mt-1 text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    onClick={() => navigate('/map')}
+                >
+                    View on map
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    ) : null
 
+    const DuplicateModal = () => {
+        if (!duplicateModal) return null
+        const { nearby } = duplicateModal
+
+        const submitAnyway = async () => {
+            setDuplicateModal(null)
+            setLoading(true)
+            try {
+                await reportIssue({ ...form, lat: pin.lat, lng: pin.lng, image: imageFile, force: true })
+                setShowSuccess(true)
+                setTimeout(() => navigate('/map'), 2200)
+            } catch (err) {
+                setError(err.message || 'Failed to submit report')
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        return (
+            <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/40 p-4">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+
+                    <div className="px-5 pt-5 pb-4 border-b border-stone-100">
+                        <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.2">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                                    <line x1="12" y1="9" x2="12" y2="13" />
+                                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 className="text-sm font-black text-stone-900 leading-tight">Similar issue already reported</h2>
+                                <p className="text-xs text-stone-400 mt-0.5 leading-relaxed">
+                                    A nearby issue looks similar to yours. Upvote it instead, or submit yours anyway.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="px-5 py-3 space-y-2 max-h-52 overflow-y-auto">
+                        {nearby.map(issue => {
+                            const c = CATEGORIES.find(x => x.value === issue.category)
+                            return (
+                                <div key={issue.id} className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-100">
+                                    <span className="text-base flex-shrink-0">{c?.icon ?? '📌'}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-bold text-stone-900 truncate">{issue.title}</p>
+                                        <p className="text-[10px] text-stone-400 truncate mt-0.5">{issue.address}</p>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[10px] font-bold text-stone-400 flex-shrink-0">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                            <path d="M12 19V5M5 12l7-7 7 7" />
+                                        </svg>
+                                        {issue.upvotes ?? 0}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+
+                    <div className="px-5 pb-5 pt-3 flex flex-col gap-2">
+                        <button
+                            onClick={() => navigate('/map')}
+                            className="w-full py-3 bg-blue-600 text-white text-sm font-bold rounded-full flex items-center justify-center gap-2 hover:bg-blue-700 transition-all"
+                        >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M12 19V5M5 12l7-7 7 7" />
+                            </svg>
+                            Go to map to upvote
+                        </button>
+                        <button
+                            onClick={submitAnyway}
+                            className="w-full py-3 border border-stone-200 text-stone-600 text-sm font-bold rounded-full hover:bg-stone-50 transition-all"
+                        >
+                            Submit my issue anyway
+                        </button>
+                        <button
+                            onClick={() => setDuplicateModal(null)}
+                            className="text-xs text-stone-400 hover:text-stone-600 transition-colors py-1"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <>
+
+            <SuccessToast />
+            <DuplicateModal />
             {/* ════════════════════════════════════════════════════════════
                 DESKTOP LAYOUT  (lg+)
             ════════════════════════════════════════════════════════════ */}

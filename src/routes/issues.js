@@ -11,7 +11,7 @@ const { getIO } = require('../socket')
 // POST /api/issues — report a new issue (with optional image upload)
 router.post('/', upload.single('image'), async (req, res, next) => {
     try {
-        const { title, description, category, lat, lng, address, user_id } = req.body
+        const { title, description, category, lat, lng, address, user_id, force } = req.body
         let image_url = null
 
         if (req.file) {
@@ -23,6 +23,33 @@ router.post('/', upload.single('image'), async (req, res, next) => {
             return res.status(400).json({ success: false, message: 'title, lat, lng are required' })
         }
 
+        // ── Duplicate check (skip if force=true) ──────────────────────────────
+        if (force !== 'true') {
+            const nearby = await db.query(
+                `SELECT id, title, category, address, upvotes
+                 FROM issues
+                 WHERE ST_DWithin(
+                     location::geography,
+                     ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,
+                     200
+                 )
+                 AND category = $3
+                 AND status != 'resolved'
+                 ORDER BY created_at DESC
+                 LIMIT 3`,
+                [lat, lng, category]
+            )
+
+            if (nearby.rows.length > 0) {
+                return res.status(200).json({
+                    success: false,
+                    duplicate: true,
+                    nearby: nearby.rows
+                })
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         const result = await db.query(
             `INSERT INTO issues (title, description, category, location, address, image_url, user_id)
              VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($5, $4), 4326), $6, $7, $8)
@@ -32,7 +59,6 @@ router.post('/', upload.single('image'), async (req, res, next) => {
 
         await redis.del('nearby:*')
 
-        // Broadcast new issue to all connected clients
         try {
             getIO().emit('new_issue', {
                 ...result.rows[0],
