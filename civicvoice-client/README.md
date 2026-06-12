@@ -1,16 +1,67 @@
-# React + Vite
+# CivicVoice Client 🌐
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This subdirectory contains the frontend web application for the CivicVoice citizen-engagement platform. It is a single-page application built on React, styled with Tailwind CSS, and optimized with Vite.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠️ Technology Stack
 
-## React Compiler
+*   **Core**: [React 19](https://react.dev/)
+*   **Build Tool**: [Vite](https://vite.dev/)
+*   **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
+*   **Interactive Maps**: [Leaflet](https://leafletjs.com/) via [React Leaflet](https://react-leaflet.js.org/)
+*   **Real-Time Data**: [Socket.io Client](https://socket.io/docs/v4/client-api/)
+*   **Routing**: [React Router DOM v6](https://reactrouter.com/)
+*   **HTTP client**: [Axios](https://axios-http.com/)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 📁 Router & Pages
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The application has role-based page permissions set up under [App.jsx](src/App.jsx). Below are the defined pages:
+
+1.  **`/` - Landing Page**: Introducing features and showcasing statistics.
+2.  **`/map` - Map Dashboard**: The core interface displays a interactive Leaflet map marking all nearby infrastructure issues with category indicators.
+3.  **`/login` / Registration**: Unified portal to authenticate users or sign up citizens.
+4.  **`/forgot-password` & `/reset-password`**: Flows to handle secure password recovery.
+5.  **`/report` (Protected)**: Allows logged-in citizens to submit issues by dropping a pin, supplying category information, detailing reports, and optionally uploading files.
+6.  **`/admin` (Protected - Admin Only)**: Comprehensive control board to trace issues, filters, status indicators, and transition issue lifecycle phases.
+
+---
+
+## ⚙️ Local Configuration
+
+Create a `.env` file in this folder (`civicvoice-client/.env`):
+
+```env
+VITE_API_URL=http://localhost:5000/api
+VITE_SOCKET_URL=http://localhost:5000
+```
+
+---
+
+## 🚀 Getting Started
+
+### Standalone Development Run
+Make sure you have installed the project packages. Run the client standalone development server:
+
+```bash
+# Navigate to the client directory
+cd civicvoice-client
+
+# Install dependencies
+npm install
+
+# Run Vite dev server
+npm run dev
+```
+
+The app will be active locally at [http://localhost:5173](http://localhost:5173).
+
+### Building for Production
+To generate a compiled bundle optimized for static hosting engines (such as Nginx):
+
+```bash
+npm run build
+```
+This outputs compiled assets to the `./dist` directory.
