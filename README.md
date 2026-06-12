@@ -19,9 +19,9 @@ graph TD
     FE -->|API requests| BE[Backend: Express.js]
     BE -->|Query / Spatial Indexing| DB[(PostgreSQL + PostGIS)]
     BE -->|Job Dispatch / Cache| Redis[(Redis)]
+    BE -->|Image Uploads| Cloudinary[Cloudinary API]
     Redis -->|Process Job Queue| Worker[BullMQ Worker]
     Worker -->|Send Transactional Mail| Resend[Resend API]
-    Worker -->|Store Uploads| Cloudinary[Cloudinary API]
     BE -->|WS Broadcasts| FE
 ```
 
@@ -83,41 +83,43 @@ CivicVoice/
 The database uses PostgreSQL extended with **PostGIS** for spatial data structures. Below is the simplified relational schema:
 
 ```
-                  ┌──────────────────────┐
-                  │        users         │
-                  ├──────────────────────┤
-                  │ id (PK)              │◄──────┐
-                  │ name                 │       │
-                  │ email (Unique)       │       │
-                  │ password             │       │
-                  │ role (citizen/admin) │       │
-                  │ verified (bool)      │       │
-                  └──────────────────────┘       │
+                  ┌────────────────────────────┐
+                  │           users            │
+                  ├────────────────────────────┤
+                  │ id (PK)                    │◄──────┐
+                  │ name                       │       │
+                  │ email (Unique)             │       │
+                  │ password                   │       │
+                  │ role (citizen/admin)       │       │
+                  │ is_verified (bool)         │       │
+                  │ verification_token         │       │
+                  └────────────────────────────┘       │
                              │                   │
                              │ 1:N               │ 1:N
                              ▼                   │
-                  ┌──────────────────────┐       │
-                  │        issues        │       │
-                  ├──────────────────────┤       │
-                  │ id (PK)              │◄──┐   │
-                  │ title                │   │   │
-                  │ description          │   │   │
-                  │ category (Enum)      │   │   │
-                  │ status (Enum)        │   │   │
-                  │ location (GEOGRAPHY) │   │   │
-                  │ user_id (FK) ────────┼───┼───┘
-                  │ image_url            │   │
-                  └──────────────────────┘   │
-                             │               │
-                             │ 1:N           │ 1:N
-                             ▼               │
-                  ┌──────────────────────┐   │
-                  │    issue_upvotes     │   │
-                  ├──────────────────────┤   │
-                  │ user_id (FK) ────────┼───┘
-                  │ issue_id (FK) ───────┼───┘
-                  │ (Composite PK)       │
-                  └──────────────────────┘
+                  ┌────────────────────────────┐       │
+                  │           issues           │       │
+                  ├────────────────────────────┤       │
+                  │ id (PK)                    │◄──┐   │
+                  │ title                      │   │   │
+                  │ description                │   │   │
+                  │ category (Enum)            │   │   │
+                  │ status (Enum)              │   │   │
+                  │ location (GEOGRAPHY)       │   │   │
+                  │ address                    │   │   │
+                  │ user_id (FK) ──────────────┼───┼───┘
+                  │ image_url                  │   │
+                  └────────────────────────────┘   │
+                             │                     │
+                             │ 1:N                 │ 1:N
+                             ▼                     │
+                  ┌────────────────────────────┐   │
+                  │       issue_upvotes        │   │
+                  ├────────────────────────────┤   │
+                  │ user_id (FK) ──────────────┼───┘
+                  │ issue_id (FK) ─────────────┼───┘
+                  │ (Composite PK)             │
+                  └────────────────────────────┘
 ```
 
 ---
@@ -126,9 +128,20 @@ The database uses PostgreSQL extended with **PostGIS** for spatial data structur
 
 You must configure environment variables to run the application. Create `.env` files matching the structures below:
 
+### Backend Environment (`.env` in project root)
 
+| Variable | Description |
+| :--- | :--- |
+| `PORT` | Backend server port (default: `5000`) |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `JWT_SECRET` | Secret key for signing JWT tokens |
+| `REDIS_HOST` / `REDIS_PORT` / `REDIS_URL` | Redis connection details |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | PostgreSQL credentials (used by Docker Compose) |
+| `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Cloudinary image upload credentials |
+| `RESEND_API_KEY` / `FROM_EMAIL` | Resend transactional email service credentials |
+| `APP_URL` / `FRONTEND_URL` | Public URLs used in email links and CORS |
 
-### Client Environment Configuration (`civicvoice-client/.env`)
+### Frontend Environment (`civicvoice-client/.env`)
 ```env
 VITE_API_URL=http://localhost:5000/api
 VITE_SOCKET_URL=http://localhost:5000
@@ -205,17 +218,28 @@ To view the app, visit: [http://localhost:8080](http://localhost:8080).
 
 ## 🔌 API Routes Reference
 
+### Authentication
+
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :---: |
-| **POST** | `/api/auth/register` | Register new user accounts (citizens) | No |
-| **POST** | `/api/auth/login` | Login user, generates & returns session JWT | No |
-| **GET** | `/api/auth/verify-email` | Verifies mail activation tokens | No |
-| **POST** | `/api/issues` | Report a new issue (supports file attachments) | Yes |
-| **GET** | `/api/issues` | Fetch paginated, filterable issues | No |
-| **GET** | `/api/issues/nearby` | Spatial query coordinates and radius (caching enabled) | No |
-| **GET** | `/api/issues/my-votes` | Retrieve authenticated citizen's upvotes checklist | Yes |
-| **PATCH** | `/api/issues/:id/upvote` | Upvotes issues & fires milestone checks | Yes |
-| **PATCH** | `/api/issues/:id/status` | Transitions issue state (`open`, `in_progress`, `resolved`) | **Admin Only** |
+| **POST** | `/api/auth/register` | Register a new citizen account | No |
+| **POST** | `/api/auth/login` | Login and receive a session JWT | No |
+| **GET** | `/api/auth/verify` | Verify email via activation token (redirects to frontend) | No |
+| **POST** | `/api/auth/resend-verification` | Resend the verification email | No |
+| **GET** | `/api/auth/me` | Get the authenticated user's profile | Yes |
+| **POST** | `/api/auth/forgot-password` | Request a password reset link | No |
+| **POST** | `/api/auth/reset-password` | Reset password using a valid token | No |
+
+### Issues
+
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| **POST** | `/api/issues` | Report a new issue (supports image upload) | No |
+| **GET** | `/api/issues` | Fetch paginated, filterable issue list (cursor-based) | No |
+| **GET** | `/api/issues/nearby` | Spatial query by coordinates and radius (Redis cached) | No |
+| **GET** | `/api/issues/my-votes` | Get list of issue IDs the authenticated user has upvoted | Yes |
+| **PATCH** | `/api/issues/:id/upvote` | Upvote an issue (fires milestone notifications at 10/50/100) | Yes |
+| **PATCH** | `/api/issues/:id/status` | Update issue status (`open`, `in_progress`, `resolved`) | **Admin Only** |
 
 ---
 
