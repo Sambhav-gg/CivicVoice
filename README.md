@@ -126,34 +126,7 @@ The database uses PostgreSQL extended with **PostGIS** for spatial data structur
 
 You must configure environment variables to run the application. Create `.env` files matching the structures below:
 
-### Root Backend Environment Configuration (`.env`)
-```env
-PORT=5000
-DATABASE_URL=postgresql://civicvoice:civicvoice123@postgres:5432/civicvoice
-NODE_ENV=development
-JWT_SECRET=your_jwt_secret_key
 
-# Redis Config (Defaults to 'redis' in Docker, 'localhost' or your redis host locally)
-REDIS_HOST=redis
-REDIS_PORT=6379
-REDIS_URL=redis://redis:6379
-
-# PostgreSQL Container Init (Matches docker-compose environment)
-POSTGRES_USER=civicvoice
-POSTGRES_PASSWORD=civicvoice123
-POSTGRES_DB=civicvoice
-
-# Cloudinary Integration (Image Uploads)
-CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
-CLOUDINARY_API_KEY=your_cloudinary_api_key
-CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-
-# Resend & Transactional Email
-RESEND_API_KEY=your_resend_api_key
-FROM_EMAIL=noreply@yourdomain.com
-APP_URL=https://yourdomain.com
-FRONTEND_URL=https://yourdomain.com
-```
 
 ### Client Environment Configuration (`civicvoice-client/.env`)
 ```env
