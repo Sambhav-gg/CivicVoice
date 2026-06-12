@@ -11,8 +11,24 @@ const { getIO } = require('../socket')
 // POST /api/issues — report a new issue (with optional image upload)
 router.post('/', upload.single('image'), async (req, res, next) => {
     try {
-        const { title, description, category, lat, lng, address, user_id, force } = req.body
+        const { title, description, category, lat, lng, address, force } = req.body
+        let user_id = req.body.user_id
         let image_url = null
+
+        // Securely extract user_id from JWT token if Authorization header is present
+        const authHeader = req.headers.authorization
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1]
+            try {
+                const jwt = require('jsonwebtoken')
+                const decoded = jwt.verify(token, process.env.JWT_SECRET)
+                if (decoded && decoded.id) {
+                    user_id = decoded.id
+                }
+            } catch (err) {
+                console.error('[AUTH] Optional token verify failed in issue creation:', err.message)
+            }
+        }
 
         if (req.file) {
             const uploaded = await uploadToCloudinary(req.file.buffer)
@@ -70,7 +86,13 @@ router.post('/', upload.single('image'), async (req, res, next) => {
 
         await notificationQueue.add('notify', {
             type: 'NEW_ISSUE',
-            data: { title, address, category }
+            data: {
+                issueId: result.rows[0].id,
+                title,
+                address,
+                category,
+                userId: user_id
+            }
         })
 
         res.status(201).json({ success: true, issue: result.rows[0] })

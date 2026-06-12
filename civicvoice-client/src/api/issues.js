@@ -18,8 +18,15 @@ export async function reportIssue(data) {
     if (data.image) formData.append('image', data.image)
     if (data.force) formData.append('force', 'true')   // ← new
 
+    const headers = {}
+    const token = localStorage.getItem('token')
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+    }
+
     const res = await fetch('/api/issues', {
         method: 'POST',
+        headers,
         body: formData,
     })
 
